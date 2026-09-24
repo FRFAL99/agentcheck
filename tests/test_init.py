@@ -134,11 +134,3 @@ def test_cli_init_survives_a_cp1252_stdout(repo):
 
     assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
     assert "✓" in proc.stdout.decode("utf-8")
-
-
-@pytest.mark.parametrize("event", ["session-start", "stop"])
-def test_hook_stubs_print_nothing(event):
-    result = CliRunner().invoke(app, ["hook", event], input='{"session_id": "x"}')
-
-    assert result.exit_code == 0
-    assert result.output == ""

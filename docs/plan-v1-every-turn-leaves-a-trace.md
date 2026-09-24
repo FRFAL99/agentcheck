@@ -186,6 +186,12 @@ Each Stop appends one record to `.agentcheck/sessions/<id>.turns.jsonl`: turn nu
 `changed_since_start` and `changed_this_turn` (name-status lists), `transcript_path`,
 `last_assistant_message` (or `null` if the field is absent), `stop_hook_active`.
 
+**Added after Step 2:** the terminal CLI (2.1.23) doesn't send `last_assistant_message` at all
+([knowledge](knowledge/claude-code-hooks.md)), so Phase 2 will have to fall back on the
+transcript — the thing the docs say may lag. The record therefore also stores what the
+transcript looked like **at Stop time**: its line count, and the type of its last entry. Across
+real turns this measures whether the lag exists, instead of assuming either way.
+
 ### The point not to forget
 
 A turn in which the agent only talks changes nothing: `changed_this_turn` is empty, and that is a

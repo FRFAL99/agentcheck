@@ -1,0 +1,8 @@
+{
+  "session_id": "SESSION_ID",
+  "transcript_path": "C:\\Users\\dev\\.claude\\projects\\repo\\SESSION_ID.jsonl",
+  "cwd": "REPO",
+  "hook_event_name": "SessionStart",
+  "source": "clear",
+  "model": "claude-opus-5-5"
+}

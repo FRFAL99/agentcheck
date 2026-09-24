@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 
 from agentcheck import __version__
+from agentcheck.hooks import run_hook
 from agentcheck.init import SETTINGS_PATH, InitError, run_init
 
 app = typer.Typer(
@@ -66,14 +67,22 @@ def init() -> None:
         )
 
 
+def _run_hook(event: str) -> None:
+    # Bytes, decoded as UTF-8: Claude Code sends UTF-8, and on Windows sys.stdin would be cp1252.
+    raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")
+    out = run_hook(event, raw)
+    if out:
+        sys.stdout.write(out)
+
+
 @hook_app.command("session-start")
 def hook_session_start() -> None:
-    """SessionStart hook. Stub until Step 2: consumes the input, prints nothing."""
+    """SessionStart hook: saves the session baseline. Prints nothing."""
     # Nothing on stdout: on SessionStart plain stdout goes into Claude's context.
-    sys.stdin.read()
+    _run_hook("SessionStart")
 
 
 @hook_app.command("stop")
 def hook_stop() -> None:
-    """Stop hook. Stub until Step 3: consumes the input, prints nothing."""
-    sys.stdin.read()
+    """Stop hook. Logs its input; the per-turn diff arrives in Step 3."""
+    _run_hook("Stop")

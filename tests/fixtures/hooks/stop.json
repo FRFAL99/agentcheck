@@ -1,0 +1,11 @@
+{
+  "session_id": "SESSION_ID",
+  "transcript_path": "C:\\Users\\dev\\.claude\\projects\\repo\\SESSION_ID.jsonl",
+  "cwd": "REPO",
+  "permission_mode": "default",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "Ho aggiunto i test per parse_invoice — tutto verde ✓",
+  "background_tasks": [],
+  "session_crons": []
+}

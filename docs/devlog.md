@@ -4,6 +4,54 @@ Chronological record of progress. Entries in reverse chronological order (newest
 
 ---
 
+## 2026-09-24 — Step 2: the baseline holds, and the terminal's claude is a different, older one
+
+SessionStart now saves `.agentcheck/sessions/<session_id>.json` — `head` and a snapshot `tree` —
+once, and never again for that id. Every hook invocation is appended verbatim to
+`.agentcheck/logs/hooks.jsonl` before anything else runs; any failure lands in
+`.agentcheck/logs/errors.log` and the hook still exits 0 with nothing on stdout.
+
+**The snapshot does what the scratch test of Step 0 promised**, now under test: the user's index
+hash, `git status` and refs identical before and after; untracked in, ignored out; no temporary
+index left behind; an unborn branch with no `.git/index` works and leaves none. Two mutations were
+run to prove the tests bite — removing the overwrite guard failed three tests, pointing
+`GIT_INDEX_FILE` at the real index failed two.
+
+**A repo where `init` never ran is left alone**: no `.agentcheck/` means the hook writes nothing,
+not even the raw log. A `session_id` that isn't a plain slug is refused before it becomes a path —
+the same guard `obsidian-dev-agent` puts on project names.
+
+### Checked with the real thing
+
+`claude -p` in a scratch repo, then `--resume`, then `/compact`, with both binaries on this machine.
+
+- **The VS Code extension runs 2.1.281, the terminal 2.1.23.** Found only because the first run
+  used the terminal one and the log didn't match the docs.
+- **2.1.23 sends no `last_assistant_message`** on Stop, and `/compact` in `-p` mode fired no hook.
+  2.1.281 sends everything the docs list, and fires `SessionStart` with `source: compact`.
+- **With both, the baseline survived**: one file per session, byte-identical after `resume` (with a
+  file added in between) and after `compact`.
+
+The table of what each version sends is now in
+[knowledge/claude-code-hooks.md](knowledge/claude-code-hooks.md).
+
+### What deviated from the plan
+
+- **`last_assistant_message` turned out optional**, which decision 0 had assumed away. Step 3 now
+  also records the transcript's state at Stop time, to measure the lag instead of guessing it.
+- The first `/compact` attempt never reached Claude: Git Bash had rewritten it into a Windows path.
+- `init.py` now reuses `gitstate.repo_root` instead of its own `git rev-parse`.
+- Hook stdin is read as bytes and decoded as UTF-8: on Windows `sys.stdin` would be cp1252, and the
+  fixture's Italian message with `—` and `✓` is there to catch it.
+
+### Verification
+
+`uv run pytest`: **35 passed**. Definition of done with real Claude Code (2.1.281 and 2.1.23):
+baseline written at startup, unchanged after resume and compact, `hooks.jsonl` with every event,
+`errors.log` absent.
+
+---
+
 ## 2026-09-24 — Step 1: `init` wires the hooks, and a check mark crashed it on Windows
 
 `agentcheck init` merges the SessionStart and Stop hooks into `.claude/settings.json` and creates a

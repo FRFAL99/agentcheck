@@ -1,10 +1,29 @@
 # Claude Code hooks — what is verified
 
 How the hooks that agentcheck relies on actually behave. **Read from the official reference**
-(`https://code.claude.com/docs/en/hooks`) on **2026-09-24**, not recalled from memory. The Claude
-Code CLI installed on this machine reported `2.1.23` that day, while the reference documents fields
-up to v2.1.257: **which fields really arrive is settled by the raw stdin log of plan v1, not by this
-page.** When the two disagree, the log wins and this page is corrected.
+(`https://code.claude.com/docs/en/hooks`) on **2026-09-24**, then **checked against the raw stdin
+log** (`.agentcheck/logs/hooks.jsonl`) of real headless sessions the same day. When the two
+disagree, the log wins and this page is corrected.
+
+## What each version really sends — from the log, 2026-09-24
+
+**Two versions live on this machine**: the VS Code extension bundles **2.1.281**
+(`~/.vscode/extensions/anthropic.claude-code-2.1.281-win32-x64/resources/native-binary/claude.exe`),
+while the `claude` on PATH in a terminal is **2.1.23**. The same repo gets different inputs
+depending on where the session was started.
+
+| Event                  | 2.1.281 (extension)                                                                                                                             | 2.1.23 (terminal)                                                  |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| SessionStart `startup` | `cwd`, `source`, `transcript_path`, `scratchpad_dir`                                                                                            | `cwd`, `source`, `transcript_path`                                 |
+| SessionStart `resume`  | same, plus `seconds_since_last_response`, `context_tokens`, `prompt_cache_likely_expired`, `estimated_cache_write_usd`                          | `cwd`, `source`, `transcript_path` — same `session_id`             |
+| SessionStart `compact` | `cwd`, `source`, `transcript_path`, `model`, `prompt_id`                                                                                        | **not fired** — `/compact` in `-p` mode invoked no hook at all     |
+| Stop                   | `last_assistant_message`, `stop_hook_active`, `permission_mode`, `effort`, `prompt_id`, `background_tasks`, `session_crons`, `transcript_path` | **no `last_assistant_message`**, `stop_hook_active`, `permission_mode`, `transcript_path` |
+
+Consequence: **`last_assistant_message` is optional.** Whatever reads the agent's words must fall
+back to the transcript when the field is absent — and the transcript is the thing the docs say may
+lag. Step 3 measures whether it does.
+
+`resume` keeps the `session_id` in both versions.
 
 ## Input (JSON on stdin)
 

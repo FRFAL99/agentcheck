@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-AGENTCHECK_DIR = ".agentcheck"
+from agentcheck.gitstate import AGENTCHECK_DIR, repo_root
+
 SETTINGS_PATH = Path(".claude") / "settings.json"
 
 # A bare command, not an interpreter path: settings.json stays identical across machines and
@@ -37,14 +37,10 @@ class InitResult:
 
 
 def find_repo_root(start: Path) -> Path:
-    proc = subprocess.run(
-        ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-    )
-    if proc.returncode != 0:
+    root = repo_root(start)
+    if root is None:
         raise InitError(f"{start} is not inside a git repository.")
-    return Path(proc.stdout.strip())
+    return root
 
 
 def _load_settings(path: Path) -> dict:
