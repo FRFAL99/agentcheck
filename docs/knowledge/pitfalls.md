@@ -1,0 +1,15 @@
+# Pitfalls already solved — not to rediscover
+
+One row per trap that cost time, or would have. The long story, when there is one, is in the
+devlog.
+
+| Pitfall                                                                                             | Adopted solution                                                                                     |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| A Stop hook's plain stdout is shown to nobody                                                       | The report goes in `systemMessage`, inside a JSON object that is the **only** thing on stdout        |
+| SessionStart's plain stdout goes into **Claude's** context                                          | `hook session-start` prints nothing                                                                  |
+| The transcript may not yet contain the current turn at Stop                                         | Final text from `last_assistant_message`; transcript only for earlier messages                       |
+| SessionStart fires again on `resume` and `compact`: re-saving the baseline resets the diff silently | Baseline written once per `session_id`, never overwritten                                            |
+| `git stash create` ignores untracked files — the ones an agent creates                              | Snapshot = `git write-tree` on a copy of the index after `git add -A` (ADR 0001)                     |
+| `.agentcheck/` appears as `??` in the user's `git status`                                           | `.agentcheck/.gitignore` containing `*`, written by `init`                                           |
+| A process spawned by Claude Code runs from a cwd nobody chose (learned in obsidian-dev-agent)       | Repo resolved from the hook input's `cwd`, never from the process cwd                                |
+| `git add` on Windows prints `LF will be replaced by CRLF` warnings on stderr                        | Harmless: judge git by its exit code, never by stderr being empty                                    |
