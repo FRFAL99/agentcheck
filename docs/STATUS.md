@@ -11,16 +11,21 @@ history is already in the devlog and the [registry](registry.md) keeps it anyway
 
 ## Where we are
 
-**Documentation only, no code.** Step 0 is closed: the spec ([PROJECT.md](../PROJECT.md)), the way
-of working ([CLAUDE.md](../CLAUDE.md)), the verified behaviour of Claude Code hooks
+**Steps 0 and 1 are closed.** `agentcheck init` wires the hooks into a repo; the hooks themselves
+are still stubs that read their input and print nothing. **13 tests green.** Step 0 gave the spec
+([PROJECT.md](../PROJECT.md)), the way of working ([CLAUDE.md](../CLAUDE.md)), the verified
+behaviour of Claude Code hooks
 ([knowledge/claude-code-hooks.md](knowledge/claude-code-hooks.md)) and the first ADR.
 
+On this machine agentcheck is installed with `uv tool install --editable .`, so the `agentcheck`
+on PATH follows the source.
+
 **[Plan v1](plan-v1-every-turn-leaves-a-trace.md) is open** — Phase 0, Steps 1–3: hook into
-Claude Code and leave, for every turn, a log with the correct diff. Next is **Step 1**.
+Claude Code and leave, for every turn, a log with the correct diff. Next is **Step 2**: the baseline.
 
 ## What's missing
 
-- **Phase 0**, the whole of plan v1.
+- **Steps 2 and 3** of plan v1: the baseline, then the per-turn diff checked in a real session.
 - Phases 1–5 of PROJECT.md §9, each still to be turned into a plan.
 - **The four open questions** of PROJECT.md §12. The one about how to show the report is answered
   (`systemMessage`); "every turn or only above `low`" gets decided with the first real report, in
@@ -28,6 +33,4 @@ Claude Code and leave, for every turn, a log with the correct diff. Next is **St
 
 ## What's blocked, and by what
 
-- **Step 1 is blocked by the toolchain.** On 2026-09-24 this machine had **no Python and no `uv`**
-  (`python` resolves only to the Microsoft Store alias), and no WSL. `uv` can install Python itself,
-  so installing `uv` unblocks both.
+Nothing.

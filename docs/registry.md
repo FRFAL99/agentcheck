@@ -20,7 +20,7 @@ Status: ✅ closed · 🟡 partly · ⬜ not done.
 | N   | Title                                  | Plan  | Status | Devlog     |
 | --- | -------------------------------------- | ----- | ------ | ---------- |
 | 0   | Repo and documentation                 | setup | ✅     | 2026-09-24 |
-| 1   | The skeleton and `init`                | v1    | ⬜     |            |
+| 1   | The skeleton and `init`                | v1    | ✅     | 2026-09-24 |
 | 2   | The session remembers where it started | v1    | ⬜     |            |
 | 3   | Every turn leaves a trace              | v1    | ⬜     |            |
 

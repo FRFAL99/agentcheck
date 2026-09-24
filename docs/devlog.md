@@ -4,6 +4,43 @@ Chronological record of progress. Entries in reverse chronological order (newest
 
 ---
 
+## 2026-09-24 — Step 1: `init` wires the hooks, and a check mark crashed it on Windows
+
+`agentcheck init` merges the SessionStart and Stop hooks into `.claude/settings.json` and creates a
+self-ignoring `.agentcheck/`. The two hook commands exist as stubs that read stdin and print
+nothing — on SessionStart, anything printed would go into Claude's context.
+
+**The merge never loses what's there.** Another tool's `Stop` hook stays: ours is appended as a
+separate matcher group. Invalid JSON, or a `hooks.Stop` that isn't a list, stops init **before any
+write** — including `.agentcheck/`, so a refused init leaves the repo exactly as it was. Run twice,
+nothing changes: the second run doesn't even rewrite the file.
+
+**Run from a subdirectory, it finds the repo root** with `git rev-parse --show-toplevel`, so
+`.claude/` never lands inside `src/`.
+
+### What deviated from the plan
+
+- **The first real run crashed** with `UnicodeEncodeError` on `✓`: the definition of done was run
+  with stdout piped, and on Windows a piped stdout is cp1252. All twelve tests were green, because
+  `CliRunner` writes UTF-8. The CLI now reconfigures stdout and stderr to UTF-8 with
+  `errors="replace"`, and a thirteenth test spawns a real process with `PYTHONIOENCODING=cp1252`.
+  It matters beyond init: the report of PROJECT.md §4.7 is made of `✗ ! ✓`.
+- **Python couldn't be downloaded**: `uv python install` failed with `invalid peer certificate:
+  UnknownIssuer` — something on this machine intercepts TLS, and uv by default trusts only its
+  bundled roots. `system-certs = true` in uv's user config fixed it; the PowerShell installer had
+  worked because it uses the Windows store.
+- `requires-python` is `>=3.11` as the spec says; development runs on 3.12.14, installed by uv.
+- Added `src/agentcheck/__main__.py`, not in the plan, so the subprocess test can run
+  `python -m agentcheck`.
+
+### Verification
+
+`uv run pytest`: **13 passed**. Definition of done in a scratch repo: `init` twice → one hook of
+each kind in `settings.json`, second run reports "already configured", `git status` lists
+`.claude/` and the repo's own file but not `.agentcheck/`.
+
+---
+
 ## 2026-09-24 — Step 0: repo and documentation, and the hooks read before writing a line
 
 **Done**

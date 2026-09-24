@@ -13,3 +13,5 @@ devlog.
 | `.agentcheck/` appears as `??` in the user's `git status`                                           | `.agentcheck/.gitignore` containing `*`, written by `init`                                           |
 | A process spawned by Claude Code runs from a cwd nobody chose (learned in obsidian-dev-agent)       | Repo resolved from the hook input's `cwd`, never from the process cwd                                |
 | `git add` on Windows prints `LF will be replaced by CRLF` warnings on stderr                        | Harmless: judge git by its exit code, never by stderr being empty                                    |
+| On Windows a piped stdout is cp1252: rich raises `UnicodeEncodeError` on `✓`, and `CliRunner` tests can't see it | The CLI callback reconfigures stdout/stderr to UTF-8 with `errors="replace"`; a subprocess test runs with `PYTHONIOENCODING=cp1252` |
+| `uv python install` fails with `invalid peer certificate: UnknownIssuer`: something on this machine intercepts TLS | `system-certs = true` in `%APPDATA%/uv/uv.toml` (machine config, not the project). `native-tls` is the deprecated name |
