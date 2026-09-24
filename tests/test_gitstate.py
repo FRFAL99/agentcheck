@@ -123,3 +123,21 @@ def test_tree_exists(repo):
 
     assert gitstate.tree_exists(repo, tree)
     assert not gitstate.tree_exists(repo, "0" * 40)
+
+
+def test_read_blobs(repo):
+    committed(repo)
+    write(repo, "dir with space/è.py", "x = 1\n")
+    (repo / "bin.dat").write_bytes(b"\x00\x01\n\xff" * 3)
+    tree = gitstate.snapshot(repo)
+
+    blobs = gitstate.read_blobs(repo, tree, ["a.txt", "dir with space/è.py", "missing.py", "bin.dat"])
+
+    # Exactly the bytes on disk: on Windows write_text wrote "\r\n", and autocrlf is off here.
+    assert blobs == {
+        "a.txt": (repo / "a.txt").read_bytes(),
+        "dir with space/è.py": (repo / "dir with space" / "è.py").read_bytes(),
+        "missing.py": None,
+        "bin.dat": b"\x00\x01\n\xff" * 3,
+    }
+    assert gitstate.read_blobs(repo, tree, []) == {}

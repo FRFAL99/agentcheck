@@ -31,6 +31,9 @@ uv run agentcheck --help             # the CLI still starts
 
 Nothing else is wired yet. A linter or formatter is a new dependency: PROJECT.md §13 says ask first.
 
+**After adding a dependency, run `uv tool install --editable . --reinstall`.** The editable tool
+follows the source but not new dependencies: the `agentcheck` the hooks call would miss them.
+
 ## Rules that are not negotiable
 
 1. **agentcheck never modifies the user's repo.** Not files, not the index, not refs, not the

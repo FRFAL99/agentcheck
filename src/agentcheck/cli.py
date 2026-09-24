@@ -7,8 +7,9 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 
-from agentcheck import __version__
+from agentcheck import __version__, gitstate
 from agentcheck.hooks import run_hook
 from agentcheck.init import SETTINGS_PATH, InitError, run_init
 
@@ -65,6 +66,32 @@ def init() -> None:
             "[yellow]![/yellow] `agentcheck` is not on PATH: Claude Code won't find the hooks. "
             "Install it with `uv tool install --editable <path-to-agentcheck>`."
         )
+
+
+@app.command()
+def run(
+    from_: str = typer.Option(..., "--from", help="Tree, commit or ref to compare from."),
+    to: str = typer.Option(None, "--to", help="Tree, commit or ref to compare to. Default: the working tree."),
+) -> None:
+    """Run the analysis by hand between two states of the repo, without hooks (for debugging)."""
+    # Imported here, not at the top: the hook commands share this module, and a missing or broken
+    # analysis dependency must not stop them from starting.
+    from agentcheck.structural.diff import analyze_trees
+
+    repo = gitstate.repo_root(Path.cwd())
+    if repo is None:
+        console.print("[red]✗[/red] not inside a git repository.")
+        raise typer.Exit(1)
+    try:
+        new = to if to is not None else gitstate.snapshot(repo)
+        changes, findings = analyze_trees(repo, from_, new)
+    except gitstate.GitError as exc:
+        console.print(f"[red]✗[/red] {exc}")
+        raise typer.Exit(1)
+
+    console.print(f"{len(changes)} files changed, {len(findings)} findings")
+    for finding in findings:
+        console.print("[yellow]![/yellow] " + escape(f"[{finding.severity}] {finding.message}"), highlight=False)
 
 
 def _run_hook(event: str) -> None:

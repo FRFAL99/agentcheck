@@ -1,0 +1,1 @@
+export function f(a: number) { return a; }

@@ -17,7 +17,9 @@ record to `.agentcheck/sessions/<id>.turns.jsonl`: what changed since the sessio
 changed in this turn, what the agent said, and the state of the transcript at that moment.
 Checked with real Claude Code on both versions of this machine. Nothing is shown to the user yet.
 Since Step 4 a turn starts at the prompt: the developer's edits between turns are recorded apart,
-in `changed_between_turns`. **60 tests green.**
+in `changed_between_turns`. Since Step 5, `agentcheck run --from <ref>` reports changed public
+signatures, removed public symbols and broken syntax in Python and TS/JS — by hand only, the
+hooks don't call it yet. **97 tests green.**
 Step 0 gave the spec ([PROJECT.md](../PROJECT.md)), the way of working ([CLAUDE.md](../CLAUDE.md)), the verified
 behaviour of Claude Code hooks ([knowledge/claude-code-hooks.md](knowledge/claude-code-hooks.md)) and the first ADR.
 
@@ -27,11 +29,11 @@ https://github.com/FRFAL99/agentcheck.
 
 **[Plan v2](plan-v2-the-turn-ends-with-a-verdict.md) is open** — Phase 1, Steps 4–7: the turn
 starts at the prompt, symbols and file-level signals, a risk score, and the first report shown
-to the developer. Next is **Step 5**: the symbol extractors.
+to the developer. Next is **Step 6**: the file-level signals.
 
 ## What's missing
 
-- **Plan v2**, Steps 5–7.
+- **Plan v2**, Steps 6–7.
 - **Repos initialised before Step 4 need `agentcheck init` again** to get the UserPromptSubmit
   hook; until then they fall back to `"turn_start": "previous_stop"`.
 - **The terminal `claude` is 2.1.23**, the VS Code extension 2.1.281: the old one sends no

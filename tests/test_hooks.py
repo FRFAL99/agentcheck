@@ -173,3 +173,23 @@ def test_cli_hook_in_a_real_process(ready, command, fixture, event, tmp_path):
     assert proc.stdout == b""
     assert errors(ready) == ""
     assert raw_log(ready)[-1]["event"] == event
+
+
+def test_hooks_start_even_if_the_analysis_cannot_be_imported(ready, tmp_path):
+    # `uv tool install --editable` follows the source but not new dependencies: a hook must not
+    # need tree-sitter just to start. Simulated by making `tree_sitter` unimportable.
+    blocker = tmp_path / "blocker"
+    blocker.mkdir()
+    (blocker / "tree_sitter.py").write_text("raise ImportError('simulated missing dependency')\n", encoding="utf-8")
+    env = {**os.environ, "PYTHONPATH": str(blocker)}
+
+    proc = subprocess.run(
+        [sys.executable, "-m", "agentcheck", "hook", "session-start"],
+        input=hook_input("session-start-startup", ready).encode("utf-8"),
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+    )
+
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
+    assert (ready / ".agentcheck" / "sessions" / "sess-1.json").exists()

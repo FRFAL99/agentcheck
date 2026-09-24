@@ -89,7 +89,8 @@ flags turn 1. That's correct as a statement about turn 1; recurring patterns are
 **Decision.**
 
 - **Python**: module-level functions and classes whose name doesn't start with `_`, and the
-  non-underscore methods of those classes. If the module assigns a literal `__all__`, the
+  non-underscore methods of those classes — **plus dunders** (`__init__` is how a class is
+  called; added in Step 5). If the module assigns a literal `__all__`, the
   module-level set is exactly `__all__`. Files whose module name starts with `_` (except
   `__init__.py`) and test files are not API.
 - **TypeScript/JavaScript**: `export`ed functions, `export`ed `const` arrow functions, `export`ed
@@ -103,7 +104,7 @@ written definition it can't be tested or explained.
 **Constraint.** A symbol removed from one file and added with the same signature in another file of
 the same turn is **moved**, not removed: no finding.
 
-### 4 · A file that parsed before and doesn't parse after is a finding
+### 4 · A file that parsed before — or didn't exist — and doesn't parse after is a finding
 
 **Decision.** New signal, not in PROJECT.md §4.3: **syntax broken**, weight high. For such a file no
 symbol-level signal is computed — a half-parsed tree would report every function as removed.

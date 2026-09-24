@@ -80,6 +80,33 @@ def tree_exists(repo: Path, tree: str) -> bool:
         return False
 
 
+def read_blobs(repo: Path, tree: str, paths: list[str]) -> dict[str, bytes | None]:
+    """Contents of `paths` in `tree` (None where absent), from the object store in one process.
+
+    Never reads the working tree: a file the agent is still writing can't be caught half-done.
+    """
+    if not paths:
+        return {}
+    request = "".join(f"{tree}:{p}\n" for p in paths).encode("utf-8")
+    proc = subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "--batch"], input=request, capture_output=True
+    )
+    if proc.returncode != 0:
+        raise GitError(f"git cat-file --batch failed ({proc.returncode}): {proc.stderr.decode(errors='replace')}")
+    out, pos, blobs = proc.stdout, 0, {}
+    for path in paths:
+        end = out.index(b"\n", pos)
+        header = out[pos:end].split()
+        pos = end + 1
+        if header[-1] == b"missing" or header[1] != b"blob":
+            blobs[path] = None
+            continue
+        size = int(header[2])
+        blobs[path] = out[pos : pos + size]
+        pos += size + 1  # the content is followed by a newline
+    return blobs
+
+
 def diff(repo: Path, old_tree: str, new_tree: str) -> list[tuple[str, str]]:
     """(status, path) pairs between two trees: A added, M modified, D deleted, T type changed.
 

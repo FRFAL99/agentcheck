@@ -9,6 +9,9 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "rich>=15.0.0",
+    "tree-sitter>=0.26",
+    "tree-sitter-python>=0.25",
+    "tree-sitter-typescript>=0.23.2",
     "typer>=0.27.2",
 ]
 
@@ -26,3 +29,5 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Fixture files are sample code, some named test_*.py: never collect them.
+norecursedirs = ["fixtures", ".*", ".venv", "build", "dist"]

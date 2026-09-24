@@ -4,6 +4,60 @@ Chronological record of progress. Entries in reverse chronological order (newest
 
 ---
 
+## 2026-09-24 — Step 5: agentcheck knows what a public function is, and ran on itself
+
+Two tree-sitter extractors, `structural/python.py` and `structural/typescript.py`, return the public
+symbols of one version of a file with their signatures; `structural/diff.py` compares before and
+after — read from the snapshots' blobs with one `git cat-file --batch`, never from disk — and
+produces three kinds of finding, all high: **signature changed**, **removed**, **syntax broken**.
+`agentcheck run --from <ref> [--to <ref>]` runs it by hand.
+
+**What "public" turned out to need, case by case** — 29 fixture pairs, one per case: `__all__` as a
+literal list restricts; built dynamically, the underscore rule applies instead (the point the plan
+said not to forget). Decorated definitions count; nested ones and those under `if TYPE_CHECKING:`
+don't. In TS: overloads are joined into one signature, so adding one is a change; `export { a as b }`
+re-exports under the alias; `export default class X` is `default`, so renaming `X` changes nothing
+for importers; `private` and `#` methods are ignored. A removed class is one finding, not one per
+method. **Moved** — same name and signature, another file of the same turn — is no finding; moved
+*and* changed is reported as removed.
+
+Two mutations again: dropping the moved check and dropping the private-method check each failed
+exactly the case written for it.
+
+### Ran on agentcheck itself — and it said six false things
+
+`agentcheck run --from 6d0086d` on this repo: **six "syntax broken", all on test fixtures broken on
+purpose.** Files under `fixtures/`, `testdata/`, `__fixtures__/`, `__snapshots__/` are data, not
+code: no structural signal applies to them now. Re-run: 112 files changed, 0 findings, 2.4 s for
+the whole repo history of the day — a turn's diff is a fraction of that.
+
+### The trap that would have broken every session
+
+The first `agentcheck run` from the installed tool crashed: `No module named 'tree_sitter'`.
+**`uv tool install --editable` follows the source, not new dependencies** — and since `cli.py`
+imported the analysis at the top, *every hook* would have crashed the same way, in every repo with
+agentcheck installed, as a "hook error" in Claude Code. Two fixes: the CLI imports the analysis only
+inside `run`, and a test runs a hook with `tree_sitter` made unimportable — it failed with the old
+import, passes now. The tool was reinstalled, and CLAUDE.md says to after every dependency change.
+
+### What deviated from the plan
+
+- **Python dunders are public** (`__init__` is how a class is called) — decision 3 amended.
+- **A new file that doesn't parse is "syntax broken" too**, not only a file that parsed before —
+  decision 4 amended. A file broken before and after is still not news.
+- **Imports and test markers** — listed for Step 5's extractors — move to Step 6 with the signals
+  that use them.
+- The data directories above, found by the self-run.
+- `pyproject.toml`: pytest no longer recurses into `fixtures/`, which holds files named `test_*.py`.
+
+### Verification
+
+`uv run pytest`: **97 passed**. Definition of done in a scratch repo: `agentcheck run --from HEAD`
+over `create_invoice` gaining `currency`, `void_invoice` deleted, `format_money` moved to another
+file and `report.py` broken → exactly three findings, nothing about `format_money`.
+
+---
+
 ## 2026-09-24 — Step 4: the developer's edits are no longer the agent's
 
 A third hook, `agentcheck hook user-prompt-submit`, snapshots the tree into
