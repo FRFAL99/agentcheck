@@ -21,7 +21,8 @@ in `changed_between_turns`. Since Step 5, `agentcheck run --from <ref>` reports 
 signatures, removed public symbols and broken syntax in Python and TS/JS; since Step 6 also
 sensitive files, new dependencies, code without tests, tests removed or disabled, in-repo imports
 that don't resolve, many files — configurable in `.agentcheck/config.toml`. By hand only, the hooks
-don't call it yet. **138 tests green.**
+don't call it yet — **until Step 7: now Stop runs it on every turn**, in a child process, and
+the verdict reaches the developer as a `systemMessage`. **161 tests green.**
 Step 0 gave the spec ([PROJECT.md](../PROJECT.md)), the way of working ([CLAUDE.md](../CLAUDE.md)), the verified
 behaviour of Claude Code hooks ([knowledge/claude-code-hooks.md](knowledge/claude-code-hooks.md)) and the first ADR.
 
@@ -31,11 +32,16 @@ https://github.com/FRFAL99/agentcheck.
 
 **[Plan v2](plan-v2-the-turn-ends-with-a-verdict.md) is open** — Phase 1, Steps 4–7: the turn
 starts at the prompt, symbols and file-level signals, a risk score, and the first report shown
-to the developer. Next is **Step 7**: the verdict reaches the developer.
+to the developer. **Step 7 is 🟡**: everything is checked headless, what's left is the developer looking at the
+report in VS Code.
 
 ## What's missing
 
-- **Plan v2**, Step 7.
+- **Step 7's last check, by the developer, in VS Code**: the report is visible in the
+  conversation, `·` renders correctly, a turn with no edit shows nothing. Then plan v2 closes.
+- **Edits made *during* a turn by someone else** (the developer, a formatter on save, a build)
+  are still counted as the agent's. Seen in the Step 7 check: a file written by the test harness
+  while the turn ran was reported. Not solvable from hooks alone.
 - **Repos initialised before Step 4 need `agentcheck init` again** to get the UserPromptSubmit
   hook; until then they fall back to `"turn_start": "previous_stop"`.
 - **The terminal `claude` is 2.1.23**, the VS Code extension 2.1.281: the old one sends no

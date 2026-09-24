@@ -110,6 +110,9 @@ that prints a friendly "baseline saved" line is talking to Claude, not to the us
   prefixed `Stop says: `**. The transcript stores it as an `attachment` of type
   `hook_system_message` — where `·` appeared double-encoded as `Â·`, while the stream had it right.
   How VS Code renders it is still to be seen.
+- **End to end with agentcheck, 2026-09-24:** the Stop hook's report arrived in the `stream-json`
+  output of a real `claude -p` session as informational messages, one per line, each prefixed
+  `Stop says: `, with `·` intact.
 
 ## Config location
 

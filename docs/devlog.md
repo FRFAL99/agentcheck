@@ -4,6 +4,49 @@ Chronological record of progress. Entries in reverse chronological order (newest
 
 ---
 
+## 2026-09-24 — Step 7: the verdict reaches the developer — checked headless, VS Code still to see
+
+Stop now does what Phase 1 was for. After writing the turn record — first, so nothing below can
+lose it — it runs the analysis of Steps 5–6 on the turn's own diff (prompt → Stop) **in a child
+process**, `agentcheck analyze-turn`, with a 30 s timeout. The result goes to
+`sessions/<id>.analysis.jsonl`; the report goes to stdout as the one JSON object Claude Code reads:
+`{"systemMessage": "..."}`.
+
+- `risk.py`: weights 3/2/1, **medium** from 3, **high** from 6 — one high signal is medium.
+- `report.py`: findings → header `agentcheck · turn N · risk LEVEL` and one `! message` per finding,
+  by severity then file, within `max_lines` (`… and N more`); files changed and nothing found →
+  `agentcheck · turn N · all good (3 files)`; nothing changed → no output.
+- A child that crashes, hangs or prints garbage costs **that turn's report and nothing else**: a
+  line in `errors.log`, a `failed` entry in the analysis file, exit 0, empty stdout. Tested with a
+  child that exits like the tree-sitter crash did, one that sleeps past the timeout, one that prints
+  non-JSON. A broken `config.toml` falls back to the defaults and says so.
+
+### Checked with the real thing
+
+Claude Code 2.1.281, `claude -p … --output-format stream-json`, in a scratch repo:
+
+- "add a required parameter `currency` to `create_invoice`, don't touch the tests" →
+  `Stop says: agentcheck · turn 1 · risk MEDIUM`, then the signature change with old and new, then
+  `Code changed, no tests touched: api/invoices.py`. Exactly the plan's definition of done.
+- A question with no edit → `all good (1 file)` instead of silence — and the one file was
+  **`s2.jsonl`, the output of the command running the test**, written inside the repo while the
+  turn ran. agentcheck was right that it changed; nothing from hooks can tell who changed it.
+- Stop took **~0.8 s to record plus ~0.75 s to analyse**, well inside the 2 s of PROJECT.md §3.
+
+### What deviated from the plan
+
+- The analysis result lives in its own file, `analysis.jsonl`, rather than inside the turn record:
+  the record is written before the analysis runs and is never rewritten.
+- `run_hook` now returns what the handler returns; only Stop returns anything.
+
+### Verification
+
+`uv run pytest`: **161 passed**. Headless definition of done: above. **Still open:** the look of the
+report in VS Code, by the developer — `·` rendering (the transcript stores it double-encoded) and
+whether the lines read well after `Stop says: `.
+
+---
+
 ## 2026-09-24 — Step 6: the file-level signals, and a tree-sitter that crashed the process
 
 `structural/turn.py` now runs every deterministic signal on a turn, each family isolated — an

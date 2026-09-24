@@ -20,7 +20,8 @@ def stop(repo: Path, prompt_id: str | None = "p-1", fixture: str = "stop") -> No
     payload = json.loads(hook_input(fixture, repo))
     if prompt_id is not None:
         payload["prompt_id"] = prompt_id
-    assert hooks.run_hook("Stop", json.dumps(payload, ensure_ascii=False)) == ""
+    out = hooks.run_hook("Stop", json.dumps(payload, ensure_ascii=False))
+    assert out == "" or set(json.loads(out)) == {"systemMessage"}
 
 
 def write(repo: Path, name: str, text: str = "x\n") -> None:

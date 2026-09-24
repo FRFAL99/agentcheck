@@ -98,6 +98,36 @@ def run(
         console.print("[red]✗[/red] " + escape(f"signal failed, {error}"), highlight=False)
 
 
+@app.command("analyze-turn", hidden=True)
+def analyze_turn_command(
+    repo: Path = typer.Option(..., "--repo"),
+    from_: str = typer.Option(..., "--from"),
+    to: str = typer.Option(..., "--to"),
+) -> None:
+    """Internal: the Stop hook runs the analysis through this, in a child process. Prints JSON."""
+    import json
+
+    from agentcheck.config import Config, ConfigError, load_config
+    from agentcheck.structural.turn import analyze_turn
+
+    errors = []
+    try:
+        config = load_config(repo)
+    except ConfigError as exc:
+        config = Config()
+        errors.append(f"config: {exc}")
+    result = analyze_turn(repo, from_, to, config)
+    sys.stdout.write(
+        json.dumps(
+            {
+                "changes": len(result.changes),
+                "findings": [f.to_dict() for f in result.findings],
+                "errors": errors + result.errors,
+            }
+        )
+    )
+
+
 def _run_hook(event: str) -> None:
     # Bytes, decoded as UTF-8: Claude Code sends UTF-8, and on Windows sys.stdin would be cp1252.
     raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")

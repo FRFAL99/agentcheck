@@ -1,8 +1,8 @@
-"""Hook entry points (plan v1, decisions 1, 4 and 5; Step 3).
+"""Hook entry points (plan v1, decisions 1, 4 and 5; plan v2, decisions 1 and 7).
 
 `run_hook` is the envelope every hook goes through: it resolves the repo from the input, logs the
-raw input, runs the handler, and never raises. What it returns is what goes on stdout — in Phase 0,
-always nothing.
+raw input, runs the handler, and never raises. What it returns is what goes on stdout: nothing,
+or — at Stop — one JSON object carrying the report in `systemMessage`.
 """
 
 from __future__ import annotations
@@ -10,18 +10,26 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agentcheck import collector, gitstate
+from agentcheck import collector, gitstate, report, risk
+from agentcheck.config import Config, ConfigError, load_config
+from agentcheck.findings import Finding
 
 AGENTCHECK_DIR = gitstate.AGENTCHECK_DIR
 
 # A session id becomes a file name: anything else could escape `sessions/`.
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+
+# The analysis runs in a child process: a native crash (tree-sitter 0.26.0 had one) or a hang must
+# cost one report, never the hook. Module-level so tests can point them elsewhere.
+ANALYSIS_COMMAND = [sys.executable, "-m", "agentcheck", "analyze-turn"]
+ANALYSIS_TIMEOUT_S = 30
 
 
 def _now() -> str:
@@ -71,6 +79,10 @@ def session_path(repo: Path, session_id: str) -> Path:
 
 def turns_path(repo: Path, session_id: str) -> Path:
     return session_path(repo, session_id).with_suffix(".turns.jsonl")
+
+
+def analysis_path(repo: Path, session_id: str) -> Path:
+    return session_path(repo, session_id).with_suffix(".analysis.jsonl")
 
 
 def turn_start_path(repo: Path, session_id: str) -> Path:
@@ -170,8 +182,8 @@ def _take_turn_start(repo: Path, session_id: str, prompt_id: str | None) -> dict
     return start
 
 
-def stop(payload: dict, repo: Path) -> None:
-    """Append one record per turn: what changed since the session started and in this turn.
+def stop(payload: dict, repo: Path) -> str | None:
+    """Record the turn, then return the verdict on it (JSON for stdout), if there is one to give.
 
     A turn in which the agent only talks is a valid record with an empty `changed_this_turn`:
     Phase 2 needs exactly those ("I fixed it" with nothing changed).
@@ -181,7 +193,7 @@ def stop(payload: dict, repo: Path) -> None:
     turn_start = _take_turn_start(repo, session_id, payload.get("prompt_id"))
     base = _load_baseline(repo, session_id, "Stop")
     if base is None:
-        return
+        return None
 
     turns = turns_path(repo, session_id)
     previous = _last_turn(turns)
@@ -190,13 +202,15 @@ def stop(payload: dict, repo: Path) -> None:
 
     if turn_start is not None and gitstate.tree_exists(repo, turn_start["tree"]):
         start_kind = "prompt"
-        this_turn = _diff(repo, turn_start["tree"], tree, "changed_this_turn")
+        turn_from = turn_start["tree"]
+        this_turn = _diff(repo, turn_from, tree, "changed_this_turn")
         between = _diff(repo, previous_tree, turn_start["tree"], "changed_between_turns")
     else:
         # No turn-start (repo initialised before Step 4, or a missed hook): the Phase 0 behaviour,
         # where between-turns edits are indistinguishable from the agent's.
         start_kind = "previous_stop"
-        this_turn = _diff(repo, previous_tree, tree, "changed_this_turn")
+        turn_from = previous_tree
+        this_turn = _diff(repo, turn_from, tree, "changed_this_turn")
         between = None
 
     final_message = payload.get("last_assistant_message")
@@ -222,7 +236,68 @@ def stop(payload: dict, repo: Path) -> None:
         "transcript_at_stop": collector.transcript_state(payload.get("transcript_path"), final_message),
     }
     record["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
+    # Written before the analysis runs: whatever happens to the analysis, the turn is on record.
     _append(turns, json.dumps(record, ensure_ascii=False))
+
+    if this_turn is None:
+        return None  # the turn's start tree was pruned: nothing reliable to analyse
+    return _verdict(repo, session_id, record["turn"], turn_from, tree, len(this_turn))
+
+
+class AnalysisFailed(Exception):
+    pass
+
+
+def _analyze_in_child(repo: Path, old_tree: str, new_tree: str) -> dict:
+    proc = subprocess.run(
+        [*ANALYSIS_COMMAND, "--repo", str(repo), "--from", old_tree, "--to", new_tree],
+        cwd=repo,
+        capture_output=True,
+        timeout=ANALYSIS_TIMEOUT_S,
+    )
+    if proc.returncode != 0:
+        tail = proc.stderr.decode("utf-8", errors="replace").strip()[-300:]
+        raise AnalysisFailed(f"exit code {proc.returncode}: {tail}")
+    try:
+        return json.loads(proc.stdout.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise AnalysisFailed(f"unreadable output: {exc}") from exc
+
+
+def _verdict(repo: Path, session_id: str, turn: int, old_tree: str, new_tree: str, files_changed: int) -> str | None:
+    """Run the analysis, store it, and return the report as stdout JSON (plan v2, decision 7)."""
+    started = time.perf_counter()
+    try:
+        config = load_config(repo)
+    except ConfigError as exc:
+        _log_error(repo, f"Stop turn {turn}: {exc}; using the defaults")
+        config = Config()
+
+    entry = {"turn": turn, "analysed_at": _now(), "from": old_tree, "to": new_tree}
+    try:
+        result = _analyze_in_child(repo, old_tree, new_tree)
+    except (AnalysisFailed, subprocess.TimeoutExpired, OSError) as exc:
+        _log_error(repo, f"Stop turn {turn}: analysis failed, no report for this turn: {exc}")
+        entry.update(failed=str(exc), elapsed_ms=round((time.perf_counter() - started) * 1000))
+        _append(analysis_path(repo, session_id), json.dumps(entry, ensure_ascii=False))
+        return None
+
+    findings = [Finding(**f) for f in result.get("findings", [])]
+    for error in result.get("errors", []):
+        _log_error(repo, f"Stop turn {turn}: signal failed, {error}")
+    text = report.render(turn, findings, files_changed, config.max_lines)
+    entry.update(
+        risk=risk.level(findings),
+        score=risk.score(findings),
+        findings=[f.to_dict() for f in findings],
+        errors=result.get("errors", []),
+        reported=text is not None,
+        elapsed_ms=round((time.perf_counter() - started) * 1000),
+    )
+    _append(analysis_path(repo, session_id), json.dumps(entry, ensure_ascii=False))
+    # Only this object on stdout: anything else and Claude Code reads it as plain text, which on
+    # Stop goes to the debug log — the report would be lost.
+    return json.dumps({"systemMessage": text}) if text else None
 
 
 HANDLERS = {"SessionStart": session_start, "UserPromptSubmit": user_prompt_submit, "Stop": stop}
@@ -251,10 +326,15 @@ def run_hook(event: str, raw: str) -> str:
 
         if payload is None:
             raise ValueError("hook input is not a JSON object")
-        HANDLERS[event](payload, repo)
+        return HANDLERS[event](payload, repo) or ""
     except Exception:
         _report_error(repo, event)
     return ""
+
+
+def _log_error(repo: Path, message: str) -> None:
+    """A failure that was handled: one line in `logs/errors.log`."""
+    _append(repo / AGENTCHECK_DIR / "logs" / "errors.log", f"--- {_now()} {message}")
 
 
 def _report_error(repo: Path | None, event: str) -> None:

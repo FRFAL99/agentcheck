@@ -14,11 +14,14 @@ def start(repo: Path) -> None:
     hooks.run_hook("SessionStart", hook_input("session-start-startup", repo))
 
 
-def stop(repo: Path, fixture: str = "stop", transcript: str | None = None) -> None:
+def stop(repo: Path, fixture: str = "stop", transcript: str | None = None) -> str:
     payload = json.loads(hook_input(fixture, repo))
     if transcript:
         payload["transcript_path"] = str(FIXTURES / "transcripts" / f"{transcript}.jsonl")
-    assert hooks.run_hook("Stop", json.dumps(payload, ensure_ascii=False)) == ""
+    out = hooks.run_hook("Stop", json.dumps(payload, ensure_ascii=False))
+    # Nothing, or exactly one JSON object carrying the report (Step 7).
+    assert out == "" or set(json.loads(out)) == {"systemMessage"}
+    return out
 
 
 def turns(repo: Path) -> list[dict]:
