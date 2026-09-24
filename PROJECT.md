@@ -284,7 +284,7 @@ where they are decided against reality.
 - [x] `hook stop` that saves the diff and transcript path to a log
 - **Done when:** using Claude Code on a real repo, every turn produces a log with the correct diff.
 
-### Phase 1 · Structural diff (week 1)
+### Phase 1 · Structural diff (week 1) — [plan v2](docs/plan-v2-the-turn-ends-with-a-verdict.md)
 
 - [ ] Symbol extractors for Python and TypeScript with tree-sitter
 - [ ] Detection of the signals in table 4.3

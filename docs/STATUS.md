@@ -24,17 +24,15 @@ On this machine agentcheck is installed with `uv tool install --editable .`, so 
 on PATH follows the source. The repo is on GitHub, private:
 https://github.com/FRFAL99/agentcheck.
 
-**Next: plan v2, for Phase 1** — the structural diff and the first report. Written with
-`/new-plan`; the next free step number is 4.
+**[Plan v2](plan-v2-the-turn-ends-with-a-verdict.md) is open** — Phase 1, Steps 4–7: the turn
+starts at the prompt, symbols and file-level signals, a risk score, and the first report shown
+to the developer. Next is **Step 4**.
 
 ## What's missing
 
-- **Plan v2 (Phase 1)**, still to be written.
-- **"This turn" includes the user's own edits between turns.** A file changed by the developer
-  after one Stop and before the next prompt shows up in the next turn's `changed_this_turn`, as if
-  the agent had done it — seen for real on 2026-09-24. A snapshot on `UserPromptSubmit` would
-  mark the true start of each turn; it's a decision for plan v2, before any finding is built on
-  the per-turn diff.
+- **Plan v2**, all four steps.
+- **"This turn" includes the user's own edits between turns** — seen for real on 2026-09-24.
+  Step 4 fixes it with a snapshot on `UserPromptSubmit`.
 - **The terminal `claude` is 2.1.23**, the VS Code extension 2.1.281: the old one sends no
   `last_assistant_message` and fires no hook on `/compact` in `-p` mode. Updating it
   (`claude update`) is the user's call; agentcheck has to work with both anyway.

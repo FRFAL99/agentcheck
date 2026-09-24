@@ -99,6 +99,18 @@ that prints a friendly "baseline saved" line is talking to Claude, not to the us
 - SessionStart runs in the background at launch, but Claude's first response waits for it: a slow
   session-start hook delays the first answer.
 
+## UserPromptSubmit and systemMessage — tried, 2026-09-24 (2.1.281)
+
+- **UserPromptSubmit** receives `prompt`, `prompt_id`, `cwd`, `permission_mode`,
+  `transcript_path`, `scratchpad_dir`. The **Stop of the same turn carries the same `prompt_id`**.
+  Per the docs it blocks Claude until it returns (default timeout **30 s**, not 600), and its plain
+  stdout is injected into Claude's context — a UserPromptSubmit hook must print nothing.
+- **A Stop hook's `systemMessage` is delivered**: in `stream-json` it arrives as
+  `{"type": "system", "subtype": "informational", "level": "notice"}`, with **every line
+  prefixed `Stop says: `**. The transcript stores it as an `attachment` of type
+  `hook_system_message` — where `·` appeared double-encoded as `Â·`, while the stream had it right.
+  How VS Code renders it is still to be seen.
+
 ## Config location
 
 `.claude/settings.json` (project, committed), `.claude/settings.local.json` (project, gitignored),
