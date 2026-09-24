@@ -4,6 +4,50 @@ Chronological record of progress. Entries in reverse chronological order (newest
 
 ---
 
+## 2026-09-24 — Step 3: every turn leaves a trace, and Phase 0 is done
+
+Stop now appends one record per turn to `.agentcheck/sessions/<id>.turns.jsonl`: turn number,
+snapshot tree, `changed_since_start` against the baseline, `changed_this_turn` against the previous
+turn, `last_assistant_message` (or `null`), `stop_hook_active`, and `transcript_at_stop`. A turn
+where the agent only talks is recorded with an empty `changed_this_turn`, not skipped.
+
+**No baseline, no invented one.** A Stop for a session with no baseline file writes nothing and
+leaves a line in `logs/agentcheck.log`. A baseline whose tree was pruned by `git gc` gets the same
+treatment; a pruned *previous-turn* tree only makes `changed_this_turn` `null`, the rest of the
+record stays.
+
+### Checked with the real thing
+
+`claude -p` plus `--resume` in scratch repos, `--permission-mode acceptEdits`:
+
+- **2.1.281** (extension), three turns — edit `app.py`, create `notes.md`, answer a question.
+  `changed_this_turn`: `M app.py`, `A notes.md`, empty. `changed_since_start` accumulated both.
+- **2.1.23** (terminal), two turns. No `last_assistant_message`, as Step 2 found.
+- **The transcript was not behind in any of the five turns**: its last main-thread assistant text
+  at Stop time was the final message every time. The docs' warning stands, the records keep
+  measuring — see [knowledge/claude-code-hooks.md](knowledge/claude-code-hooks.md).
+- A Stop took **295–890 ms**, all of it snapshot, diffs and transcript read.
+
+### What deviated from the plan
+
+- **"Type of the last transcript entry" was useless as a measure**: a real transcript ends with
+  metadata (`last-prompt`, `cost-state`, `ai-title`), not messages. Recorded instead: line count,
+  uuid and text of the last main-thread assistant entry with text, and — when the field exists —
+  whether it matches `last_assistant_message`. Subagent entries (`isSidechain`) are skipped.
+- That measurement lives in a new `collector.py`, the module PROJECT.md §6 already names for "hook
+  input, git, transcript", rather than in `hooks.py`.
+- **Found by the 2.1.23 run, by accident:** turn 2 listed `r1.json` as changed — the output file of
+  the command running the test, written *between* turns. agentcheck can't tell the agent's edits
+  from the developer's. Not fixed here: it's the first decision for plan v2 (a snapshot on
+  `UserPromptSubmit`), recorded in STATUS.
+
+### Verification
+
+`uv run pytest`: **50 passed**. Definition of done with real Claude Code on both versions: see
+above. Plan v1 closed, three steps of three.
+
+---
+
 ## 2026-09-24 — Step 2: the baseline holds, and the terminal's claude is a different, older one
 
 SessionStart now saves `.agentcheck/sessions/<session_id>.json` — `head` and a snapshot `tree` —

@@ -84,5 +84,5 @@ def hook_session_start() -> None:
 
 @hook_app.command("stop")
 def hook_stop() -> None:
-    """Stop hook. Logs its input; the per-turn diff arrives in Step 3."""
+    """Stop hook: records what changed in this turn. Prints nothing."""
     _run_hook("Stop")

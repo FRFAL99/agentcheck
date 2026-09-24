@@ -1,4 +1,4 @@
-"""Hook entry points (plan v1, decisions 1, 4 and 5).
+"""Hook entry points (plan v1, decisions 1, 4 and 5; Step 3).
 
 `run_hook` is the envelope every hook goes through: it resolves the repo from the input, logs the
 raw input, runs the handler, and never raises. What it returns is what goes on stdout — in Phase 0,
@@ -11,11 +11,12 @@ import json
 import os
 import re
 import sys
+import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agentcheck import gitstate
+from agentcheck import collector, gitstate
 
 AGENTCHECK_DIR = gitstate.AGENTCHECK_DIR
 
@@ -30,6 +31,11 @@ def _now() -> str:
 def _append(path: Path, line: str) -> None:
     with path.open("a", encoding="utf-8", newline="\n") as f:
         f.write(line + "\n")
+
+
+def _note(repo: Path, message: str) -> None:
+    """Something worth knowing that isn't an error: goes to `logs/agentcheck.log`."""
+    _append(repo / AGENTCHECK_DIR / "logs" / "agentcheck.log", f"{_now()} {message}")
 
 
 def _write_json_atomic(path: Path, data: dict) -> None:
@@ -63,6 +69,17 @@ def session_path(repo: Path, session_id: str) -> Path:
     return repo / AGENTCHECK_DIR / "sessions" / f"{session_id}.json"
 
 
+def turns_path(repo: Path, session_id: str) -> Path:
+    return session_path(repo, session_id).with_suffix(".turns.jsonl")
+
+
+def _last_turn(path: Path) -> dict | None:
+    if not path.exists():
+        return None
+    lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return json.loads(lines[-1]) if lines else None
+
+
 def session_start(payload: dict, repo: Path) -> None:
     """Write the baseline once per session id (decision 1).
 
@@ -88,7 +105,51 @@ def session_start(payload: dict, repo: Path) -> None:
 
 
 def stop(payload: dict, repo: Path) -> None:
-    """Stub until Step 3: the raw input is already logged by the envelope."""
+    """Append one record per turn: what changed since the session started and in this turn.
+
+    A turn in which the agent only talks is a valid record with an empty `changed_this_turn` —
+    Phase 2 needs exactly those ("I fixed it" with nothing changed).
+    """
+    started = time.perf_counter()
+    session_id = payload["session_id"]
+    base_file = session_path(repo, session_id)
+    if not base_file.exists():
+        # Don't invent a baseline now: this turn's diff would be empty and look clean (decision 1).
+        _note(repo, f"Stop without a baseline for session {session_id}: turn not recorded")
+        return
+    base = json.loads(base_file.read_text(encoding="utf-8"))
+    if not gitstate.tree_exists(repo, base["tree"]):
+        _note(repo, f"baseline tree {base['tree']} of session {session_id} is gone (git gc?): turn not recorded")
+        return
+
+    turns = turns_path(repo, session_id)
+    previous = _last_turn(turns)
+    previous_tree = previous["tree"] if previous else base["tree"]
+
+    tree = gitstate.snapshot(repo)
+    this_turn = None
+    if gitstate.tree_exists(repo, previous_tree):
+        this_turn = [list(c) for c in gitstate.diff(repo, previous_tree, tree)]
+    else:
+        _note(repo, f"previous turn tree {previous_tree} is gone (git gc?): changed_this_turn unknown")
+
+    final_message = payload.get("last_assistant_message")
+    record = {
+        "turn": (previous["turn"] + 1) if previous else 1,
+        "completed_at": _now(),
+        "session_id": session_id,
+        "head": gitstate.head(repo),
+        "tree": tree,
+        "changed_since_start": [list(c) for c in gitstate.diff(repo, base["tree"], tree)],
+        "changed_this_turn": this_turn,
+        "stop_hook_active": payload.get("stop_hook_active"),
+        # None when the Claude Code version doesn't send it (2.1.23 doesn't).
+        "last_assistant_message": final_message,
+        "transcript_path": payload.get("transcript_path"),
+        "transcript_at_stop": collector.transcript_state(payload.get("transcript_path"), final_message),
+    }
+    record["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
+    _append(turns, json.dumps(record, ensure_ascii=False))
 
 
 HANDLERS = {"SessionStart": session_start, "Stop": stop}

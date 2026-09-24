@@ -1,0 +1,10 @@
+{"type": "ai-title", "aiTitle": "Invoice tests"}
+{"type": "user", "uuid": "u1", "isSidechain": false, "message": {"role": "user", "content": "Aggiungi i test per parse_invoice"}}
+{"type": "attachment", "uuid": "at1", "attachment": {}}
+{"type": "assistant", "uuid": "a1", "isSidechain": false, "message": {"role": "assistant", "content": [{"type": "text", "text": "Guardo il modulo."}]}}
+{"type": "assistant", "uuid": "a2", "isSidechain": false, "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "t1", "name": "Edit", "input": {}}]}}
+{"type": "user", "uuid": "u2", "isSidechain": false, "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "ok"}]}}
+{"type": "assistant", "uuid": "s1", "isSidechain": true, "message": {"role": "assistant", "content": [{"type": "text", "text": "subagent report"}]}}
+{"type": "last-prompt", "lastPrompt": "x"}
+{"type": "cost-state", "totalCostUSD": 0.01}
+{"type": "assistant", "uuid": "a3", "mess

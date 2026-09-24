@@ -25,6 +25,18 @@ lag. Step 3 measures whether it does.
 
 `resume` keeps the `session_id` in both versions.
 
+## Does the transcript lag? — measured, 2026-09-24
+
+The docs say the transcript _may_ not contain the current turn when Stop fires. Every Stop record
+stores the transcript as it was at that moment (`transcript_at_stop`). In **5 real turns out of 5**
+— three on 2.1.281, two on 2.1.23 — the last main-thread assistant text in the transcript **was**
+the final message: compared with `last_assistant_message` on 2.1.281, and with the `result` of
+`claude -p` on 2.1.23. No lag seen yet, in short headless turns. Not enough to rely on: the
+records keep measuring, and Phase 2 prefers the field when it's there.
+
+A Stop costs **0.3–0.9 s** end to end on this machine (`elapsed_ms`: snapshot, two diffs,
+transcript read), before any analysis.
+
 ## Input (JSON on stdin)
 
 Common to every event: `session_id`, `transcript_path`, `cwd`, `hook_event_name`, and — not on all

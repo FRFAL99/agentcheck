@@ -22,9 +22,9 @@ Status: ✅ closed · 🟡 partly · ⬜ not done.
 | 0   | Repo and documentation                 | setup | ✅     | 2026-09-24 |
 | 1   | The skeleton and `init`                | v1    | ✅     | 2026-09-24 |
 | 2   | The session remembers where it started | v1    | ✅     | 2026-09-24 |
-| 3   | Every turn leaves a trace              | v1    | ⬜     |            |
+| 3   | Every turn leaves a trace              | v1    | ✅     | 2026-09-24 |
 
 ## Plans
 
-- **[v1](plan-v1-every-turn-leaves-a-trace.md)** — Phase 0 of PROJECT.md. Opened 2026-09-24,
-  occupies Steps 1–3.
+- **[v1](plan-v1-every-turn-leaves-a-trace.md)** — Phase 0 of PROJECT.md. Opened and **closed**
+  2026-09-24, Steps 1–3, three of three.

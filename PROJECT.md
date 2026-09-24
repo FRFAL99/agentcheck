@@ -278,10 +278,10 @@ where they are decided against reality.
 
 ### Phase 0 · Hooking in (days 1–2) — [plan v1](docs/plan-v1-every-turn-leaves-a-trace.md)
 
-- [ ] Project skeleton with `uv`, `typer` CLI
-- [ ] `agentcheck init` that writes the hook configuration
-- [ ] `hook session-start` that saves the baseline
-- [ ] `hook stop` that saves the diff and transcript path to a log
+- [x] Project skeleton with `uv`, `typer` CLI
+- [x] `agentcheck init` that writes the hook configuration
+- [x] `hook session-start` that saves the baseline
+- [x] `hook stop` that saves the diff and transcript path to a log
 - **Done when:** using Claude Code on a real repo, every turn produces a log with the correct diff.
 
 ### Phase 1 · Structural diff (week 1)
