@@ -1,0 +1,11 @@
+[report]
+max_lines = 5
+
+[risk]
+many_files_threshold = 30
+
+[paths]
+sensitive = ["secrets/**", "*.pem"]
+
+[llm]
+model = "ignored-for-now"

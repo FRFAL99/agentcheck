@@ -20,6 +20,8 @@ class Parsed:
     ok: bool  # False when the tree has syntax errors
     error_line: int | None = None  # first error, 1-based
     public: dict[str, Symbol] = field(default_factory=dict)
+    # Module specifiers as written: "a.b", ".sub", ".." in Python; "./x", "react" in TS/JS.
+    imports: list[str] = field(default_factory=list)
 
 
 def collapse(text: bytes | str | None) -> str:

@@ -107,6 +107,12 @@ def read_blobs(repo: Path, tree: str, paths: list[str]) -> dict[str, bytes | Non
     return blobs
 
 
+def list_files(repo: Path, tree: str) -> list[str]:
+    """Every file path in `tree`."""
+    out = _git(repo, "ls-tree", "-r", "-z", "--name-only", tree)
+    return [p for p in out.split("\0") if p]
+
+
 def diff(repo: Path, old_tree: str, new_tree: str) -> list[tuple[str, str]]:
     """(status, path) pairs between two trees: A added, M modified, D deleted, T type changed.
 

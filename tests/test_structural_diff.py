@@ -4,11 +4,18 @@ from pathlib import Path
 
 import pytest
 
-from agentcheck.structural.diff import analyze
+from agentcheck.config import Config
+from agentcheck.structural.diff import analyze as _analyze
+from agentcheck.structural.globs import matches
 
 from conftest import FIXTURES
 
 CASES = FIXTURES / "structural"
+TESTS = Config().tests
+
+
+def analyze(changes, before, after):
+    return _analyze(changes, before, after, lambda p: matches(p, TESTS))
 
 
 def load(case: str):
@@ -105,3 +112,32 @@ def test_removed_says_whether_the_file_is_gone():
     (finding,) = analyze(changes, before, after)
 
     assert finding.message == "Removed: lib.py::gone (file deleted)"
+
+
+def test_the_python_extractor_survives_the_file_that_crashed_tree_sitter_0_26():
+    # tree-sitter 0.26.0 frees a Node twice on this file (and on stdlib files): an access violation
+    # that no try/except can catch, and that would kill a hook. Pinned to <0.26 in pyproject.toml;
+    # this runs in a child process so a regression fails the test instead of killing pytest.
+    import subprocess
+    import sys
+
+    source = (FIXTURES / "regressions" / "tree_sitter_0_26_crash.py").read_bytes()
+    proc = subprocess.run(
+        [sys.executable, "-c", "import sys; from agentcheck.structural import python; python.extract(sys.stdin.buffer.read())"],
+        input=source,
+        capture_output=True,
+    )
+
+    assert proc.returncode == 0, f"extractor crashed with exit code {proc.returncode}"
+
+
+def test_long_signatures_are_cut_where_they_differ():
+    from agentcheck.structural.diff import _short_pair
+
+    head = "(changes: list[tuple[str, str]], before: dict[str, bytes], after: dict[str, bytes]"
+    was, now = _short_pair(head + ")", head + ", is_test_path: Callable[[str], bool])")
+
+    assert was != now
+    assert "is_test_path" in now
+    assert was.startswith("…") and now.startswith("…")
+    assert _short_pair("(a)", "(a, b)") == ("(a)", "(a, b)")

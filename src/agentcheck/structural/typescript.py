@@ -134,4 +134,10 @@ def extract(source: bytes, tsx: bool = False) -> Parsed:
                 local = _text(spec.child_by_field_name("name"))
                 alias = _text(spec.child_by_field_name("alias")) or local
                 out.re_export(local, alias)
-    return Parsed(ok=True, public=out.public)
+    imports = []
+    for stmt in root.named_children:
+        source = stmt.child_by_field_name("source") if stmt.type in ("import_statement", "export_statement") else None
+        fragment = next((c for c in source.named_children if c.type == "string_fragment"), None) if source else None
+        if fragment is not None:
+            imports.append(_text(fragment))
+    return Parsed(ok=True, public=out.public, imports=imports)

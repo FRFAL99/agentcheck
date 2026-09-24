@@ -1,0 +1,9 @@
+[project]
+name = "billing"
+dependencies = ["requests>=2.31", "Typer[all]==0.12", "python_dateutil>=2.9"]
+
+[project.optional-dependencies]
+dev = ["pytest", "hypothesis"]
+
+[dependency-groups]
+lint = ["ruff", {include-group = "dev"}]

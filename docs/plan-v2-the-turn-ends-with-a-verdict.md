@@ -244,6 +244,13 @@ In a scratch repo, one turn by hand that adds `python-dateutil` to `pyproject.to
 `errors.log` — and the rest of the report still goes out; an exception anywhere still leaves the
 turn record written. The Phase 0 record is the thing Phase 2 will stand on.
 
+**Added after Step 6: an exception is not the only way to fail.** tree-sitter 0.26.0 crashed the
+process with an access violation that no `try/except` catches — in a hook that would be a
+"hook error" on every turn. The version is pinned below 0.26, but the next native crash or hang
+will look the same: **Stop writes the turn record first, then runs the analysis in a child process
+with a timeout.** A child that dies or times out is a line in `errors.log` and a turn with no
+report — never a failed hook.
+
 ### Definition of done
 
 In VS Code, in a real repo: ask Claude to add a required parameter to a public function without

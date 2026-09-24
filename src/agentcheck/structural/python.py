@@ -64,6 +64,25 @@ def _literal_all(module: ts.Node) -> set[str] | None:
     return None
 
 
+def _imports(root: ts.Node) -> list[str]:
+    """Every imported module, at any depth: an import inside a function can be wrong too."""
+    found, stack = [], [root]
+    while stack:
+        node = stack.pop()
+        if node.type == "import_statement":
+            for child in node.named_children:
+                name = child.child_by_field_name("name") if child.type == "aliased_import" else child
+                if name is not None and name.type == "dotted_name":
+                    found.append(name.text.decode("utf-8", errors="replace"))
+        elif node.type == "import_from_statement":
+            module = node.child_by_field_name("module_name")
+            if module is not None:
+                found.append(collapse(module.text))
+        else:
+            stack.extend(reversed(node.children))
+    return found
+
+
 def extract(source: bytes) -> Parsed:
     tree = _PARSER.parse(source)
     root = tree.root_node
@@ -95,4 +114,4 @@ def extract(source: bytes) -> Parsed:
             if _is_public_name(mname):
                 qualified = f"{name}.{mname}"
                 public[qualified] = Symbol(qualified, "method", _signature(method), method.start_point.row + 1)
-    return Parsed(ok=True, public=public)
+    return Parsed(ok=True, public=public, imports=_imports(root))

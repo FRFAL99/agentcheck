@@ -4,6 +4,60 @@ Chronological record of progress. Entries in reverse chronological order (newest
 
 ---
 
+## 2026-09-24 — Step 6: the file-level signals, and a tree-sitter that crashed the process
+
+`structural/turn.py` now runs every deterministic signal on a turn, each family isolated — an
+exception drops that family into `errors` and the others still report:
+
+- **sensitive file** (high) — `.env*`, `**/migrations/**`, `.github/workflows/**` by default;
+- **new dependency** (medium) — names, not lines: `pyproject.toml` (PEP 621, dependency groups,
+  Poetry), `requirements*.txt`, `package.json`; reordering or bumping versions reports nothing;
+- **code changed, no tests touched** (medium) — one finding per turn;
+- **tests removed or disabled** (high) — a deleted test file, fewer `def test_` / `it(` / `test(`,
+  more `skip`/`xfail`/`.only`/`xit`; commented-out lines don't count;
+- **import not found** (high) — only imports added this turn that point inside the repo: Python
+  relative imports and absolute ones whose top package is at the root or under `src/`; TS/JS
+  relative specifiers, with `./x.js` resolving to `x.ts`. Gitignored generated modules
+  (`_version.py`) are checked on disk before being called missing;
+- **many files** (low).
+
+`config.py` loads `.agentcheck/config.toml` over the defaults of PROJECT.md §8; `globs.py` gives
+`**` the same meaning on every Python version. `agentcheck run` uses all of it.
+
+### A crash that no try/except catches
+
+Running `agentcheck run` on this repo ended in a **segmentation fault**. Traced line by line: the
+process died on `while stack:` in `_imports` — i.e. when Python freed the previous tree-sitter
+`Node`. The same file parsed with **tree-sitter 0.25.2 went fine; 0.26.0 crashed every time**, and
+on the Python standard library it crashed within 200 files while 0.25.2 went through all 1094.
+Pinned `<0.26`. Stress run on JuTrack after the pin: 6000 TS/JS/Python files, no crash; its 384
+own TS/JS files all parse (the 152 that don't are Flow and friends in `node_modules`).
+
+In a hook this would have been a "hook error" on every turn. So Step 7 gets a new point not to
+forget, written into the plan: the analysis runs in a **child process** with a timeout, after the
+turn record is written.
+
+### What deviated from the plan
+
+- **Fixture directories are data for every signal**, not only the symbol ones of Step 5: a
+  fixture's `.env.example` was about to be a "sensitive file".
+- **`it.only(` wasn't counted as a test** in the first version, so focusing a test looked like
+  "Tests removed (2 -> 1)" — the fixture caught it.
+- The default test and migration globs match at any depth (`**/tests/**`, `**/migrations/**`);
+  PROJECT.md §8's `tests/**` would miss every package-level `tests/` of a monorepo.
+- Signature messages are now cut **where the two versions differ**: the self-run showed two
+  truncated signatures printing identically when the change was the last parameter.
+
+### Verification
+
+`uv run pytest`: **138 passed**. Definition of done in a scratch repo, one turn adding
+`python-dateutil`, touching `.env.example`, skipping a test and importing `.nonexistent`:
+exactly those four. Reordering the dependencies alone: nothing. On agentcheck itself, Step 5 → now:
+the three real API changes of this step (`analyze`'s new parameter, `is_test_path` and
+`analyze_trees` gone) plus "many files", in 2.7 s for 47 files.
+
+---
+
 ## 2026-09-24 — Step 5: agentcheck knows what a public function is, and ran on itself
 
 Two tree-sitter extractors, `structural/python.py` and `structural/typescript.py`, return the public

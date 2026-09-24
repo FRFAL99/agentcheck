@@ -23,7 +23,9 @@ def test_run_between_a_commit_and_the_working_tree(repo, monkeypatch):
 
     assert result.exit_code == 0, result.output
     lines = [l for l in result.output.splitlines() if l.startswith("!")]
-    assert len(lines) == 3, result.output
+    # The three structural findings of Step 5, plus Step 6's "no tests touched".
+    assert len(lines) == 4, result.output
+    assert "Code changed, no tests touched" in " ".join(result.output.split())
     text = " ".join(result.output.split())
     assert "Signature changed: api/invoices.py::create_invoice" in text
     assert "Removed: api/invoices.py::void_invoice" in text

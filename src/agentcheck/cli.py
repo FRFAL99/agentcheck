@@ -76,22 +76,26 @@ def run(
     """Run the analysis by hand between two states of the repo, without hooks (for debugging)."""
     # Imported here, not at the top: the hook commands share this module, and a missing or broken
     # analysis dependency must not stop them from starting.
-    from agentcheck.structural.diff import analyze_trees
+    from agentcheck.config import ConfigError, load_config
+    from agentcheck.structural.turn import analyze_turn
 
     repo = gitstate.repo_root(Path.cwd())
     if repo is None:
         console.print("[red]✗[/red] not inside a git repository.")
         raise typer.Exit(1)
     try:
+        config = load_config(repo)
         new = to if to is not None else gitstate.snapshot(repo)
-        changes, findings = analyze_trees(repo, from_, new)
-    except gitstate.GitError as exc:
-        console.print(f"[red]✗[/red] {exc}")
+        result = analyze_turn(repo, from_, new, config)
+    except (gitstate.GitError, ConfigError) as exc:
+        console.print(f"[red]✗[/red] {escape(str(exc))}")
         raise typer.Exit(1)
 
-    console.print(f"{len(changes)} files changed, {len(findings)} findings")
-    for finding in findings:
+    console.print(f"{len(result.changes)} files changed, {len(result.findings)} findings")
+    for finding in result.findings:
         console.print("[yellow]![/yellow] " + escape(f"[{finding.severity}] {finding.message}"), highlight=False)
+    for error in result.errors:
+        console.print("[red]✗[/red] " + escape(f"signal failed, {error}"), highlight=False)
 
 
 def _run_hook(event: str) -> None:

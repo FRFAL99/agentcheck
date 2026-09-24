@@ -7,9 +7,10 @@ same turn was moved, not removed.
 
 from __future__ import annotations
 
-from pathlib import Path, PurePosixPath
+from collections.abc import Callable
+from functools import lru_cache
+from pathlib import PurePosixPath
 
-from agentcheck import gitstate
 from agentcheck.findings import Finding
 from agentcheck.structural import python, typescript
 from agentcheck.structural.model import Parsed, Symbol
@@ -28,24 +29,12 @@ def language(path: str) -> str | None:
     return None
 
 
+@lru_cache(maxsize=512)  # symbols and imports both parse the same files
 def parse(path: str, source: bytes) -> Parsed:
     lang = language(path)
     if lang == "python":
         return python.extract(source)
     return typescript.extract(source, tsx=lang == "tsx")
-
-
-def is_test_path(path: str) -> bool:
-    # A default until the `[paths] tests` globs of the config arrive (Step 6).
-    p = PurePosixPath(path)
-    name = p.name.lower()
-    return (
-        any(part in ("test", "tests", "__tests__") for part in p.parts[:-1])
-        or name.startswith("test_")
-        or name.endswith("_test.py")
-        or ".test." in name
-        or ".spec." in name
-    )
 
 
 _DATA_DIRS = ("fixtures", "testdata", "__fixtures__", "__snapshots__")
@@ -64,15 +53,30 @@ def _is_private_module(path: str) -> bool:
     return language(path) == "python" and p.stem.startswith("_") and p.stem != "__init__"
 
 
-def _short(sig: str | None) -> str:
-    sig = sig or ""
-    return sig if len(sig) <= _SIG_CHARS else sig[: _SIG_CHARS - 1] + "…"
+def _short_pair(old: str | None, new: str | None) -> tuple[str, str]:
+    """Both signatures cut to fit, around where they start to differ.
+
+    Cutting both at the start hides the change when it's at the end: two long signatures differing
+    in their last parameter would print as the same prefix.
+    """
+    old, new = old or "", new or ""
+    if max(len(old), len(new)) <= _SIG_CHARS:
+        return old, new
+    first_diff = next((i for i, (a, b) in enumerate(zip(old, new)) if a != b), min(len(old), len(new)))
+    start = max(0, first_diff - 15)
+
+    def cut(sig: str) -> str:
+        piece = sig[start : start + _SIG_CHARS]
+        return ("…" if start > 0 else "") + piece + ("…" if start + _SIG_CHARS < len(sig) else "")
+
+    return cut(old), cut(new)
 
 
 def analyze(
     changes: list[tuple[str, str]] | list[list[str]],
     before: dict[str, bytes | None],
     after: dict[str, bytes | None],
+    is_test_path: Callable[[str], bool],
 ) -> list[Finding]:
     findings: list[Finding] = []
     removed: list[tuple[str, Symbol]] = []
@@ -103,12 +107,13 @@ def analyze(
             if name not in new_public:
                 removed.append((path, sym))
             elif sym.signature is not None and new_public[name].signature != sym.signature:
+                was, now = _short_pair(sym.signature, new_public[name].signature)
                 findings.append(
                     Finding(
                         "signature_changed",
                         "high",
                         path,
-                        f"Signature changed: {path}::{name} now {_short(new_public[name].signature)}, was {_short(sym.signature)}",
+                        f"Signature changed: {path}::{name} now {now}, was {was}",
                         name,
                     )
                 )
@@ -128,12 +133,3 @@ def analyze(
         gone = "file deleted" if after.get(path) is None else "no longer defined"
         findings.append(Finding("removed", "high", path, f"Removed: {path}::{sym.name} ({gone})", sym.name))
     return findings
-
-
-def analyze_trees(repo: Path, old_tree: str, new_tree: str) -> tuple[list[tuple[str, str]], list[Finding]]:
-    """The changes between two trees and the structural findings on them."""
-    changes = gitstate.diff(repo, old_tree, new_tree)
-    paths = [path for _status, path in changes if language(path) is not None and not is_data_path(path)]
-    before = gitstate.read_blobs(repo, old_tree, paths)
-    after = gitstate.read_blobs(repo, new_tree, paths)
-    return changes, analyze(changes, before, after)
