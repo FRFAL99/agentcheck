@@ -82,6 +82,13 @@ def hook_session_start() -> None:
     _run_hook("SessionStart")
 
 
+@hook_app.command("user-prompt-submit")
+def hook_user_prompt_submit() -> None:
+    """UserPromptSubmit hook: marks where the turn starts. Prints nothing."""
+    # Nothing on stdout: on UserPromptSubmit plain stdout goes into Claude's context.
+    _run_hook("UserPromptSubmit")
+
+
 @hook_app.command("stop")
 def hook_stop() -> None:
     """Stop hook: records what changed in this turn. Prints nothing."""

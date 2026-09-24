@@ -16,7 +16,8 @@ where `agentcheck init` ran, every Claude Code session gets a baseline, and ever
 record to `.agentcheck/sessions/<id>.turns.jsonl`: what changed since the session started, what
 changed in this turn, what the agent said, and the state of the transcript at that moment.
 Checked with real Claude Code on both versions of this machine. Nothing is shown to the user yet.
-**50 tests green.**
+Since Step 4 a turn starts at the prompt: the developer's edits between turns are recorded apart,
+in `changed_between_turns`. **60 tests green.**
 Step 0 gave the spec ([PROJECT.md](../PROJECT.md)), the way of working ([CLAUDE.md](../CLAUDE.md)), the verified
 behaviour of Claude Code hooks ([knowledge/claude-code-hooks.md](knowledge/claude-code-hooks.md)) and the first ADR.
 
@@ -26,13 +27,13 @@ https://github.com/FRFAL99/agentcheck.
 
 **[Plan v2](plan-v2-the-turn-ends-with-a-verdict.md) is open** — Phase 1, Steps 4–7: the turn
 starts at the prompt, symbols and file-level signals, a risk score, and the first report shown
-to the developer. Next is **Step 4**.
+to the developer. Next is **Step 5**: the symbol extractors.
 
 ## What's missing
 
-- **Plan v2**, all four steps.
-- **"This turn" includes the user's own edits between turns** — seen for real on 2026-09-24.
-  Step 4 fixes it with a snapshot on `UserPromptSubmit`.
+- **Plan v2**, Steps 5–7.
+- **Repos initialised before Step 4 need `agentcheck init` again** to get the UserPromptSubmit
+  hook; until then they fall back to `"turn_start": "previous_stop"`.
 - **The terminal `claude` is 2.1.23**, the VS Code extension 2.1.281: the old one sends no
   `last_assistant_message` and fires no hook on `/compact` in `-p` mode. Updating it
   (`claude update`) is the user's call; agentcheck has to work with both anyway.

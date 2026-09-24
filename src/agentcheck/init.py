@@ -19,6 +19,7 @@ SETTINGS_PATH = Path(".claude") / "settings.json"
 # committable. It relies on `agentcheck` being on PATH (decision 6).
 HOOK_COMMANDS = {
     "SessionStart": "agentcheck hook session-start",
+    "UserPromptSubmit": "agentcheck hook user-prompt-submit",
     "Stop": "agentcheck hook stop",
 }
 

@@ -23,7 +23,7 @@ Status: ✅ closed · 🟡 partly · ⬜ not done.
 | 1 | The skeleton and `init`                    | v1    | ✅      | 2026-09-24 |
 | 2 | The session remembers where it started     | v1    | ✅      | 2026-09-24 |
 | 3 | Every turn leaves a trace                  | v1    | ✅      | 2026-09-24 |
-| 4 | The developer's edits are not the agent's  | v2    | ⬜      |            |
+| 4 | The developer's edits are not the agent's  | v2    | ✅      | 2026-09-24 |
 | 5 | agentcheck knows what a public function is | v2    | ⬜      |            |
 | 6 | The file-level signals                     | v2    | ⬜      |            |
 | 7 | The verdict reaches the developer          | v2    | ⬜      |            |

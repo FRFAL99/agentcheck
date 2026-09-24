@@ -4,6 +4,40 @@ Chronological record of progress. Entries in reverse chronological order (newest
 
 ---
 
+## 2026-09-24 — Step 4: the developer's edits are no longer the agent's
+
+A third hook, `agentcheck hook user-prompt-submit`, snapshots the tree into
+`sessions/<id>.turn-start.json` when a prompt is submitted. Stop consumes it: `changed_this_turn`
+now runs from the prompt to the Stop, and what changed between the previous Stop and the prompt goes
+in a new field, `changed_between_turns`. The record also carries `prompt_id` and the first 200
+characters of the prompt — Phase 2 will want to know what was asked.
+
+**Pairing.** On 2.1.281 the turn-start and the Stop carry the same `prompt_id`; a mismatch discards
+the turn-start, with a note. 2.1.23 sends no `prompt_id`, and the latest turn-start is taken.
+
+**The interrupted turn** — the point the plan said not to forget. Stop doesn't fire when the user
+presses Esc, so the turn-start file stays; the next prompt finds it and flags
+`previous_turn_interrupted`. The interrupted turn's edits land in `changed_between_turns`, whose
+author the record doesn't assert.
+
+**Repos set up before today** have no UserPromptSubmit hook: Stop falls back to the Phase 0
+behaviour and says so, `"turn_start": "previous_stop"`. Running `agentcheck init` again adds only
+the missing hook — tested.
+
+### What deviated from the plan
+
+- Nothing in the design. The baseline and gc checks were pulled into two helpers, `_load_baseline`
+  and `_diff`, now that three places need them.
+- The real-process test covers all three hook commands, and each now runs after a real baseline.
+
+### Verification
+
+`uv run pytest`: **60 passed**. Definition of done with real Claude Code 2.1.281: edit `app.py` →
+write `HAND_EDIT.md` by hand → create `notes.md`. Turn 2: `changed_this_turn` = `A notes.md`,
+`changed_between_turns` = `A HAND_EDIT.md`. Stop took 725–792 ms.
+
+---
+
 ## 2026-09-24 — Step 3: every turn leaves a trace, and Phase 0 is done
 
 Stop now appends one record per turn to `.agentcheck/sessions/<id>.turns.jsonl`: turn number,

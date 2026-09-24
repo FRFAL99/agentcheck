@@ -22,14 +22,32 @@ def commands(settings: dict, event: str) -> list[str]:
     return [h["command"] for g in settings["hooks"][event] for h in g["hooks"]]
 
 
-def test_creates_settings_with_both_hooks(repo):
+ALL = ["SessionStart", "UserPromptSubmit", "Stop"]
+
+
+def test_creates_settings_with_all_hooks(repo):
     result = run_init(repo)
 
     settings = settings_of(repo)
-    assert commands(settings, "SessionStart") == [HOOK_COMMANDS["SessionStart"]]
-    assert commands(settings, "Stop") == [HOOK_COMMANDS["Stop"]]
+    for event in ALL:
+        assert commands(settings, event) == [HOOK_COMMANDS[event]]
     assert result.settings_created
-    assert result.hooks_added == ["SessionStart", "Stop"]
+    assert result.hooks_added == ALL
+
+
+def test_a_repo_initialised_by_step_1_gets_only_the_new_hook(repo):
+    # Before Step 4, init wrote SessionStart and Stop only.
+    (repo / ".claude").mkdir()
+    old = {"hooks": {e: [{"hooks": [{"type": "command", "command": HOOK_COMMANDS[e]}]}] for e in ("SessionStart", "Stop")}}
+    (repo / ".claude" / "settings.json").write_text(json.dumps(old), encoding="utf-8")
+
+    result = run_init(repo)
+
+    assert result.hooks_added == ["UserPromptSubmit"]
+    assert result.hooks_present == ["SessionStart", "Stop"]
+    settings = settings_of(repo)
+    for event in ALL:
+        assert commands(settings, event) == [HOOK_COMMANDS[event]]
 
 
 def test_is_idempotent(repo):
@@ -39,7 +57,7 @@ def test_is_idempotent(repo):
     result = run_init(repo)
 
     assert result.hooks_added == []
-    assert result.hooks_present == ["SessionStart", "Stop"]
+    assert result.hooks_present == ALL
     assert (repo / ".claude" / "settings.json").read_bytes() == before
 
 
@@ -112,7 +130,8 @@ def test_cli_init(repo, monkeypatch):
     result = CliRunner().invoke(app, ["init"])
 
     assert result.exit_code == 0, result.output
-    assert "SessionStart, Stop hook added" in result.output
+    # rich wraps at the terminal width: compare without line breaks.
+    assert "SessionStart, UserPromptSubmit, Stop hook added" in " ".join(result.output.split())
 
 
 def test_cli_init_outside_a_repo_exits_1(tmp_path, monkeypatch):

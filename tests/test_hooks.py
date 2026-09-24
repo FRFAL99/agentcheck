@@ -149,13 +149,20 @@ def test_a_failure_inside_the_handler_is_logged_not_raised(ready, monkeypatch):
     assert not (ready / ".agentcheck" / "sessions" / "sess-1.json").exists()
 
 
-@pytest.mark.parametrize("event", ["session-start", "stop"])
-def test_cli_hook_in_a_real_process(ready, event, tmp_path):
+@pytest.mark.parametrize(
+    "command, fixture, event",
+    [
+        ("session-start", "session-start-startup", "SessionStart"),
+        ("user-prompt-submit", "user-prompt-submit", "UserPromptSubmit"),
+        ("stop", "stop", "Stop"),
+    ],
+)
+def test_cli_hook_in_a_real_process(ready, command, fixture, event, tmp_path):
     # A real process, UTF-8 bytes on stdin, Windows' cp1252 as the default encoding, a cwd that
     # isn't the repo: what Claude Code will do. Exit 0 and nothing on stdout.
-    fixture = "session-start-startup" if event == "session-start" else "stop"
+    hooks.run_hook("SessionStart", hook_input("session-start-startup", ready))
     proc = subprocess.run(
-        [sys.executable, "-m", "agentcheck", "hook", event],
+        [sys.executable, "-m", "agentcheck", "hook", command],
         input=hook_input(fixture, ready).encode("utf-8"),
         cwd=tmp_path,
         env={**os.environ, "PYTHONIOENCODING": "cp1252"},
@@ -165,4 +172,4 @@ def test_cli_hook_in_a_real_process(ready, event, tmp_path):
     assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
     assert proc.stdout == b""
     assert errors(ready) == ""
-    assert raw_log(ready)[-1]["event"] == ("SessionStart" if event == "session-start" else "Stop")
+    assert raw_log(ready)[-1]["event"] == event
