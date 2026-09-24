@@ -17,3 +17,4 @@ devlog.
 | `uv python install` fails with `invalid peer certificate: UnknownIssuer`: something on this machine intercepts TLS | `system-certs = true` in `%APPDATA%/uv/uv.toml` (machine config, not the project). `native-tls` is the deprecated name |
 | Git Bash rewrites an argument like `/compact` into `C:/Program Files/Git/compact` before `claude -p` sees it | `MSYS_NO_PATHCONV=1` in front of the command |
 | The VS Code extension and the terminal run **different** Claude Code versions (2.1.281 vs 2.1.23): hook inputs differ | Treat every field beyond `session_id`/`cwd`/`transcript_path` as optional; the raw log says which version sent what |
+| `git push` fails with `unable to get local issuer certificate`: same TLS interception, Git Bash's git trusts only its OpenSSL bundle | `git config http.sslBackend schannel` in this repo (as JuTrack does), so git uses the Windows store |

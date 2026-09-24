@@ -13,13 +13,12 @@ history is already in the devlog and the [registry](registry.md) keeps it anyway
 
 **Steps 0–2 are closed.** `agentcheck init` wires the hooks into a repo; SessionStart saves a
 baseline snapshot once per session; Stop only logs its raw input so far. **35 tests green.**
-Step 0 gave the spec
-([PROJECT.md](../PROJECT.md)), the way of working ([CLAUDE.md](../CLAUDE.md)), the verified
-behaviour of Claude Code hooks
-([knowledge/claude-code-hooks.md](knowledge/claude-code-hooks.md)) and the first ADR.
+Step 0 gave the spec ([PROJECT.md](../PROJECT.md)), the way of working ([CLAUDE.md](../CLAUDE.md)), the verified
+behaviour of Claude Code hooks ([knowledge/claude-code-hooks.md](knowledge/claude-code-hooks.md)) and the first ADR.
 
 On this machine agentcheck is installed with `uv tool install --editable .`, so the `agentcheck`
-on PATH follows the source.
+on PATH follows the source. The repo is on GitHub, private:
+https://github.com/FRFAL99/agentcheck.
 
 **[Plan v1](plan-v1-every-turn-leaves-a-trace.md) is open** — Phase 0, Steps 1–3: hook into
 Claude Code and leave, for every turn, a log with the correct diff. Next is **Step 3**: the per-turn diff.
